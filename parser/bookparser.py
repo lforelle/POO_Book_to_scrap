@@ -4,22 +4,24 @@ import re
 import csv
 import os
 
-DETAILS_DIR = "Books_details"     # Prefixe de nom attribué aux repertoires CSV
+DETAILS_DIR = "Books_details"     # Name prefix for the directory name of the CSV files
 
 class BookParser:
-    """Extraction données"""
+    """Book data extraction"""
 
     def __init__(self, html):
         self.html = html
 
     def parse_book(self):
-        """Données livre"""
+        """Parse the data of a book"""
+
         scraper = Scraper(self.html)
-        test_acces_page_html = scraper.test_page_access()
-        if test_acces_page_html is None:
-            print(f"Pas de données pour : {self.html}")
+        html_url_access_test = scraper.url_access_test()
+        if html_url_access_test is None:
+            print(f"No data for : {self.html}")
+            return None
         else:
-            self.soup = scraper.get_page(test_acces_page_html)
+            self.soup = scraper.get_page(html_url_access_test)
 
         dico_infos = {}
         currency = "£"
@@ -81,23 +83,25 @@ class BookParser:
         image_url_absolute = urljoin('https://books.toscrape.com/', src_image)
         dico_infos["image_url"] = image_url_absolute
 
-        # Sauvegarde CSV    
+        # Save CSV
         safe_title = re.sub(r"[^a-zA-Z0-9]+", "_", title).strip("_")
         filename = "details_" + (safe_title)[:25] + "_"     # 25 premiers caracteres du titre seulement
-        book.save_book_data_to_csv(filename, dico_infos, "a")
+        self.save_book_data_to_csv(filename, dico_infos, "a")
 
-        # Recuperation de l'image et sauvegarde dans le meme dossier que les 'csv'
+        # Fetch image and save it in the same folder as the 'csv' file
         image_scraper = Scraper(image_url_absolute)
-        test_acces_page_image = image_scraper.test_page_access()
-        if test_acces_page_image is None:
-            print(f"Pas de données pour : {image_url_absolute}")
-            return
+        image_url_access_test = image_scraper.url_access_test()
+        if image_url_access_test is None:
+            print(f"No data for : {image_url_absolute}")
+            return dico_infos
         path_jpg_filename = DETAILS_DIR + "/" + filename + '.jpg'
         jpg_file_exists = os.path.isfile(path_jpg_filename)
         if jpg_file_exists:
-            return
+            return dico_infos
         with open(path_jpg_filename, "wb") as image_file:
-            image_file.write(test_acces_page_image.content)
+            image_file.write(image_url_access_test.content)
+
+        return dico_infos
 
     def save_book_data_to_csv(self, filename, dico_infos, mode):   
         self.filename = filename
